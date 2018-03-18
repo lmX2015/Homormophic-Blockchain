@@ -1,5 +1,5 @@
 package security;
-
+import memory.Db;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -7,7 +7,7 @@ public class Transaction {
 	
 	private String senderId;
 	private String receiverId;
-	private int amount;
+	private long amount;
 	private int nonce;
 	private String signature;
 	private Integer blockNumber;
@@ -15,7 +15,7 @@ public class Transaction {
 	
 	public synchronized String getSenderId() {return senderId;}
 	public synchronized String getReceiverId() {return receiverId;}
-	public synchronized int getAmount() {return amount;}
+	public synchronized long getAmount() {return amount;}
 	public synchronized String getSignature() {return signature;}
 	public synchronized int getNonce(){return nonce;}
 	public synchronized int getBlockNumber(){return blockNumber;}
@@ -84,5 +84,12 @@ public class Transaction {
 		res+=blockIndex;
 		res+=";";
 		return res;
+	}
+	public boolean isValid() {
+		long amountsender = Db.getAmountUser(senderId);
+		//long amountreiceiver = Db.getAmountUser(receiverId);
+		if (this.amount > amountsender) return false;
+		//if (this.)
+		return true;
 	}
 }

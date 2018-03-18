@@ -61,7 +61,28 @@ public class Db {
 		}  
 
 	}
+	public static synchronized long getAmountUser(String pubkey ) {
+		try (
+				Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost:3306/blockchain?useSSL=false", "root", "");
+				Statement stmt = conn.createStatement();
+				){
+			String request = "select amount from accounts where pubkey =\'"+pubkey+"\'";
+			ResultSet rset = stmt.executeQuery(request);
+			long res =0;
+			while(rset.next()) {
+				res = rset.getLong("amount");
+			}
+			return res;
 
+
+		}
+		catch(SQLException ex) {
+			ex.printStackTrace();
+			return 0;
+		}  
+
+	}
 
 	/*  public static void main(String[] args) {
 	      try (

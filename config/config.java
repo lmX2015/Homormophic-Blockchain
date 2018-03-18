@@ -24,6 +24,9 @@ public class config {
 	public static boolean pserving =false;
 	
 	// commandline
-	public static boolean cmlineon = true;
-	public static boolean interrupthandler = true;
+	public static boolean cmlineon = false;
+	public static boolean interrupthandler = false;
+	
+	//blockchain option
+	public static int difficulty;
 }

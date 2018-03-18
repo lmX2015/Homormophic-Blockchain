@@ -26,5 +26,6 @@ public class Block {
 	public synchronized  String toString() {
 		return "id:"+id+"\n"+"hash:"+hash+"\n"+"data:"+payload;
 	}
+	
 
 }
