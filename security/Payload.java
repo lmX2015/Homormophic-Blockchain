@@ -37,6 +37,21 @@ public class Payload {
 		}
 		return res;
 	}
-	/// TO DO : hello message style ....
+	public synchronized void addTransaction(Transaction t) {
+		trades.add(t);
+	}
+	public synchronized boolean isValid() {
+		for (Transaction tx: trades) {
+			if (! tx.isValid()) return false;
+		}
+		return true;
+	}
+	public synchronized boolean isValidCache() {
+		for (Transaction tx: trades) {
+			if (! tx.isValidCache()) return false;
+		}
+		return true;
+	}
+	
 	
 }

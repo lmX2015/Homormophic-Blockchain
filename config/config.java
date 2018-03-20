@@ -1,6 +1,7 @@
 package config;
 
 public class config {
+	
 	// parameters 
 	public static int helloInt = 255;
 	public static String ID = "lmX2015";
@@ -28,5 +29,6 @@ public class config {
 	public static boolean interrupthandler = false;
 	
 	//blockchain option
-	public static int difficulty;
+	public static int difficulty=1;
+	public static long reward=100; //reward for mining one block;
 }

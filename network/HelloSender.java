@@ -1,13 +1,22 @@
 package network;
 
 import peerTable.PeerTable;
+import self.Self;
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
 import config.config;
+import messages.HelloMessage;
 public class HelloSender {
 	private MuxDemux mux =null;
 	private int seq;
 	private String hash;
-	private int helloInt;
 	public PeerTable table;
+	private BlockingQueue<String> incoming = new LinkedBlockingQueue<String>(100);
+	public void send(String m) {
+		incoming.add(m);
+	}
 	public synchronized void setSeq(int s) {
 		seq =s;
 	}
@@ -16,11 +25,8 @@ public class HelloSender {
 		mux =m ;
 	}
 	public HelloMessage hey;
-	public HelloSender(String id,int helloInt,int num, MuxDemux m) {
+	public HelloSender(MuxDemux m) {
 		//hey = new HelloMessage(id,num,helloInt);
-		this.id =id;
-		this.seq =num;
-		this.helloInt=helloInt;
 		if (!config.blockchainEnabled)hash =config.defaultHash;
 		setMuxDemux(m);
 		s= new Sender();
@@ -30,13 +36,8 @@ public class HelloSender {
 	class Sender implements Runnable{
 		public void run() {
 			while (true) {
-				hey = new HelloMessage(id,seq,hash);
-				String peers[]=table.toStringArr();
-				for(String s : peers) {
-					hey.addPeer(s);
-					hey.addPeer(id);
-				}
-				hey.setSequence(table.getMyDbVersion());
+				String dest=incoming.peek();
+				hey = new HelloMessage(Self.getId(), dest, Self.getCurrentBlock().getId()-1, Self.getCurrentBlock().getHashPrec());
 				mux.send(hey.getHelloMessageAsEncodedString());
 				
 				try {

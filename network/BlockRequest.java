@@ -1,11 +1,11 @@
 package network;
 import java.net.InetAddress;
 
-public class fileRequest {
+public class BlockRequest {
 	private InetAddress add;
 	private String filename;
 	private String id;
-	public fileRequest(InetAddress a,String f,String id) {
+	public BlockRequest(InetAddress a,String f,String id) {
 		add=a;
 		filename =f;
 		this.id =id;

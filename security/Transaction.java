@@ -1,5 +1,5 @@
 package security;
-import memory.Db;
+import memory.User;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -8,16 +8,17 @@ public class Transaction {
 	private String senderId;
 	private String receiverId;
 	private long amount;
-	private int nonce;
+	private long nonce;
 	private String signature;
 	private Integer blockNumber;
 	private Integer blockIndex;
+	
 	
 	public synchronized String getSenderId() {return senderId;}
 	public synchronized String getReceiverId() {return receiverId;}
 	public synchronized long getAmount() {return amount;}
 	public synchronized String getSignature() {return signature;}
-	public synchronized int getNonce(){return nonce;}
+	public synchronized long getNonce(){return nonce;}
 	public synchronized int getBlockNumber(){return blockNumber;}
 	public synchronized int getBlockIndex(){return blockIndex;}
 	
@@ -25,19 +26,15 @@ public class Transaction {
 	public synchronized void setBlockNumber(int newb) {blockNumber=newb;}
 	public synchronized void setBlockIndex(int newi) {blockIndex=newi;}
 	
-	public Transaction(String senderId,String receiverId,int amount,int nonce,String signature) {
+	public Transaction(String senderId,String receiverId,int amount) {
 		this.senderId=senderId;
 		this.receiverId=receiverId;
 		this.amount=amount;
-		this.nonce = nonce;
-		this.signature = signature;
 		blockNumber= null;
 		blockIndex= null;
 		
 	}
 	public Transaction(String trade) {
-		// TO DO regex parsing !!!!
-		//format : SenderId;ReceiverId;amount;nonce;signature;blockNumber;blockIndex;
 		String regex = "((?:[a-z]|[0-9]){1,16});((?:[a-z]|[0-9]){1,16});([0-9]{1,10});([0-9]{1,10});((?:[a-z]|[0-9]){1,16});((?:[0-9]{1,10})|(?:null));((?:[0-9]{1,10})|(?:null))";
 		Pattern pattern = Pattern.compile(regex);
 		Matcher matcher = pattern.matcher(trade);
@@ -85,11 +82,36 @@ public class Transaction {
 		res+=";";
 		return res;
 	}
-	public boolean isValid() {
-		long amountsender = Db.getAmountUser(senderId);
-		//long amountreiceiver = Db.getAmountUser(receiverId);
-		if (this.amount > amountsender) return false;
-		//if (this.)
+	public synchronized boolean isValid() {
+		if (amount<0) return false;
+		User sender = new User(senderId);
+		sender.load();
+		if (sender.getBalance()<this.amount) return false;
+		if (sender.getNonce()!=nonce) return false;
+		String content[] ={senderId,receiverId,""+amount,""+nonce};
+		String hash = Hash.hashs(content);
+		if (! sender.checkSig(hash,signature)) return false;
+		
 		return true;
+	}
+	public synchronized boolean isValidCache() {
+		User sender = new User(senderId);
+		String content[] ={senderId,receiverId,""+amount,""+nonce};
+		String hash = Hash.hashs(content);
+		if (! sender.checkSig(hash,signature)) return false;
+		
+		return true;
+	}
+	public synchronized void make() {
+		if (!this.isValid()) return;
+		User sender = new User(senderId) ;
+		sender.load();
+		sender.setBalance(sender.getBalance()-amount);
+		sender.setNonce(sender.getNonce()+1);
+		User receiver = new User(receiverId);
+		receiver.setBalance(receiver.getBalance()+amount);
+		sender.save();
+		receiver.save();
+		
 	}
 }

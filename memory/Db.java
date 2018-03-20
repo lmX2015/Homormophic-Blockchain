@@ -2,7 +2,6 @@ package memory;
 import java.sql.*;
 import security.*;
 public class Db {
-
 	public static synchronized Block[] getAll() {
 		try (
 				Connection conn = DriverManager.getConnection(
@@ -47,9 +46,14 @@ public class Db {
 			ResultSet rset = stmt.executeQuery(request);
 			Block res = null; 
 			while(rset.next()) {
+				res = new Block();
 				res.setHash(rset.getString("hash"));
 				res.setId(id);
 				res.setPayload(new Payload((rset).getString("content")));
+				res.setHashPrec(rset.getString("hashprev"));
+				res.setIdMiner(rset.getString("miner"));
+				res.setSigMineur(rset.getString("signature"));
+				res.setPow(rset.getString("pow"));
 			}
 			return res;
 
@@ -61,28 +65,59 @@ public class Db {
 		}  
 
 	}
-	public static synchronized long getAmountUser(String pubkey ) {
-		try (
-				Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost:3306/blockchain?useSSL=false", "root", "");
-				Statement stmt = conn.createStatement();
-				){
-			String request = "select amount from accounts where pubkey =\'"+pubkey+"\'";
-			ResultSet rset = stmt.executeQuery(request);
-			long res =0;
-			while(rset.next()) {
-				res = rset.getLong("amount");
+	public static synchronized void exportBlock(Block b) {
+		
+		try {
+			Connection conn = DriverManager.getConnection(
+					"jdbc:mysql://localhost:3306/blockchain?useSSL=false", "root", "");
+			PreparedStatement ps = conn.prepareStatement(
+					"UPDATE blocks SET  hash= ?, content =?, miner=?, hashprev=?, signature=?,pow=? WHERE id =?");
+
+			// set the preparedstatement parameters
+			ps.setString(1,b.getHash());
+			ps.setString(2,b.getPayload().toString());
+			ps.setString(3,b.getIdMiner() );
+			ps.setString(4,b.getHashPrec());
+			ps.setString(5,b.getSigMineur());
+			ps.setInt(7, b.getId());
+			ps.setString(6,b.getPow());
+			
+			// call executeUpdate to execute our sql update statement
+			if (ps.executeUpdate()==1){
+				ps.close();
+
 			}
-			return res;
+			else {
+				ps.close();
+				String query=" insert into blocks (hash, content, miner, hashprev,signature,id,pow)"
+				        + " values (?,?,?,?,?,?,?)";
+
+				ps = conn.prepareStatement(query);						
+				ps.setString(1,b.getHash());
+				ps.setString(2,b.getPayload().toString());
+				ps.setString(3,b.getIdMiner() );
+				ps.setString(4,b.getHashPrec());
+				ps.setString(5,b.getSigMineur());
+				ps.setInt(6, b.getId());
+				ps.setString(7,b.getPow());
+				
+				ps.execute();
+				ps.close();
+
+			}
+			conn.close();
+			
 
 
 		}
 		catch(SQLException ex) {
 			ex.printStackTrace();
-			return 0;
+
 		}  
 
 	}
+		
+
 
 	/*  public static void main(String[] args) {
 	      try (

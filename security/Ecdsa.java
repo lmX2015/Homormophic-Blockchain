@@ -2,76 +2,126 @@ package security;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.util.Date;
-import java.sql.Timestamp;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 
-import org.bouncycastle.jce.ECNamedCurveTable;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECParameterSpec;
 
 public class Ecdsa {
 	
-	public static void GetTimestamp(String info){
-		System.out.println(info + new Timestamp((new Date()).getTime()));
-	}
-	public static byte[] GenerateSignature(String plaintext, KeyPair keys) throws SignatureException, UnsupportedEncodingException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException{
-		Signature ecdsaSign = Signature.getInstance("SHA256withECDSA", "BC");
-		ecdsaSign.initSign(keys.getPrivate());
-		ecdsaSign.update(plaintext.getBytes("UTF-8"));
-		byte[] signature = ecdsaSign.sign();
-		System.out.println(signature.toString());
-		return signature;
-	}
-	
-	public static boolean ValidateSignature(String plaintext, PublicKey key, byte[] signature) throws SignatureException, InvalidKeyException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchProviderException{
-		Signature ecdsaVerify = Signature.getInstance("SHA256withECDSA", "BC");
-		//ecdsaVerify.initVerify(pair.getPublic());
-		ecdsaVerify.initVerify(key);
-		
-		ecdsaVerify.update(plaintext.getBytes("UTF-8"));
-		return ecdsaVerify.verify(signature);
-	}
+	private static KeyPairGenerator keyGen;
 	
 	public static KeyPair GenerateKeys() throws NoSuchAlgorithmException, NoSuchProviderException, InvalidAlgorithmParameterException{
-//	Other named curves can be found in http://www.bouncycastle.org/wiki/display/JA1/Supported+Curves+%28ECDSA+and+ECGOST%29
-		ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("B-571");
-
-		KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "BC");
-
-		g.initialize(ecSpec, new SecureRandom());
-
-		return g.generateKeyPair();
+		return keyGen.generateKeyPair();
 	}
 	
-	public static void main(String[] args) throws Exception {
+	public static void	init() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+		keyGen = KeyPairGenerator.getInstance("DSA"); 
+		keyGen.initialize(1024);
+	}
+	
+	private final static char[] hexArray = "0123456789abcdef".toCharArray();
+	
+	public static String bytesToHex(byte[] bytes) {
+	    char[] hexChars = new char[bytes.length * 2];
+	    for ( int j = 0; j < bytes.length; j++ ) {
+	        int v = bytes[j] & 0xFF;
+	        hexChars[j * 2] = hexArray[v >>> 4];
+	        hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+	    }
+	    return new String(hexChars);
+	}
+	public static byte[] hexStringToByteArray(String s) {
+	    int len = s.length();
+	    byte[] data = new byte[len / 2];
+	    for (int i = 0; i < len; i += 2) {
+	        data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+	                             + Character.digit(s.charAt(i+1), 16));
+	    }
+	    return data;
+	}
+	
+	public static String[] ExportKeyPair(KeyPair keyPair){
+		PrivateKey privateKey = keyPair.getPrivate();
+		PublicKey publicKey = keyPair.getPublic();
+		String[] res = new String[2];
+		// Store Public Key.
+		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(
+				publicKey.getEncoded());
+		res[0]=bytesToHex(x509EncodedKeySpec.getEncoded());
+		// Store Private Key.
+		PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(
+				privateKey.getEncoded());
+		res[1]=bytesToHex(pkcs8EncodedKeySpec.getEncoded());
+		return res;
+	}
+	public static String ExportPublic(PublicKey publicKey){
+		// Store Public Key.
+		X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(
+				publicKey.getEncoded());
+		return bytesToHex(x509EncodedKeySpec.getEncoded());
+	}
+	
 
-		Security.addProvider(new BouncyCastleProvider());
+	public static KeyPair LoadKeyPair(String pvk, String pbk)
+			 throws NoSuchAlgorithmException,
+			InvalidKeySpecException {
+		byte[] encodedPublicKey= hexStringToByteArray(pbk);
+		byte[] encodedPrivateKey = hexStringToByteArray(pvk) ;
+		KeyFactory keyFactory = KeyFactory.getInstance("DSA");
+		X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
+				encodedPublicKey);
+		PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+ 
+		PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(
+				encodedPrivateKey);
+		PrivateKey privateKey = keyFactory.generatePrivate(privateKeySpec);
+ 
+		return new KeyPair(publicKey, privateKey);
+	}
+	
+	public static PublicKey loadPublic(String pbk) throws NoSuchAlgorithmException, InvalidKeySpecException {
+		byte[] encodedPublicKey= hexStringToByteArray(pbk);
 		
-		String plaintext = "Simple plain text";
-		GetTimestamp("Key Generation started: ");
-		KeyPair keys = GenerateKeys();
-//		System.out.println(keys.getPublic().toString());
-//		System.out.println(keys.getPrivate().toString());
-		GetTimestamp("Key Generation ended: ");
-		
-		GetTimestamp("Signature Generation started: ");
-		byte[] signature = GenerateSignature(plaintext, keys);
-		GetTimestamp("Signature Generation ended: ");
-		
-		GetTimestamp("Validation started: ");
-		boolean isValidated = ValidateSignature(plaintext, keys.getPublic(), signature);
-		System.out.println("Result: " + isValidated);
-		GetTimestamp("Validation ended: ");
-		
+		KeyFactory keyFactory = KeyFactory.getInstance("DSA");
+		X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
+				encodedPublicKey);
+		PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+  
+		return publicKey;
+	
+	}
+	
+ 
+	public static byte[] sign(String plaintext, KeyPair keys) throws SignatureException, UnsupportedEncodingException, InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException{
+	    Signature signature = Signature.getInstance("DSA");
+	    signature.initSign(keys.getPrivate(), new SecureRandom());
+
+	    byte[] message = plaintext.getBytes();
+	    signature.update(message);
+
+	    byte[] sigBytes = signature.sign();
+		return sigBytes;
+	}
+	
+	public static boolean verify(String plaintext, PublicKey key, byte[] sigBytes )throws SignatureException, InvalidKeyException, UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchProviderException{
+		Signature signature = Signature.getInstance("DSA");
+		    
+		signature.initVerify(key);
+	    signature.update(plaintext.getBytes());
+	    return signature.verify(sigBytes);
+	}
+	
+
 		
 	}
-}
